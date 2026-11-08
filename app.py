@@ -13,7 +13,9 @@ CORS(app) # อนุญาตให้แอปมือถือเชื่�
 print("กำลังโหลดโมเดล กรุณารอสักครู่...")
 MODEL_PATH = 'rice_stage1.keras'
 model = tf.keras.models.load_model(MODEL_PATH)
-classes = ["Bacterialblight", "Blast", "Brownspot", "Tungro"]
+
+# 🟢 [แก้จุดที่ 1] อัปเดตรายชื่อคลาสให้มี 5 คลาสตามที่เทรนมาใหม่
+classes = ["Bacterialblight", "Blast", "Brownspot", "Tungro", "Not_Rice"]
 print("โหลดโมเดลสำเร็จ! เซิร์ฟเวอร์พร้อมทำงาน")
 
 @app.route('/predict', methods=['POST'])
@@ -38,6 +40,14 @@ def predict():
         probs = model.predict(x, verbose=0)[0]
         top_idx = np.argmax(probs)
         confidence = probs[top_idx] * 100
+        
+        predicted_class = classes[top_idx]
+
+        # 🟢 [แก้จุดที่ 2] ดักจับสิ่งแปลกปลอม (ไม่ใช่ใบข้าว)
+        if predicted_class == "Not_Rice":
+            return jsonify({
+                'error': 'ตรวจพบภาพสิ่งของหรือใบไม้อื่น กรุณาถ่ายเฉพาะใบต้นข้าวให้ชัดเจนอีกครั้งครับ'
+            }), 400
 
         # คำแนะนำอิงตามโรค
         advices = {
@@ -48,9 +58,9 @@ def predict():
         }
 
         return jsonify({
-            'disease': classes[top_idx],
+            'disease': predicted_class,
             'accuracy': f"{confidence:.1f}%",
-            'advice': advices.get(classes[top_idx], "ปรึกษาเจ้าหน้าที่เกษตรเพิ่มเติม")
+            'advice': advices.get(predicted_class, "ปรึกษาเจ้าหน้าที่เกษตรเพิ่มเติม")
         })
 
     except Exception as e:
